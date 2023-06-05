@@ -2,21 +2,22 @@ use anyhow::Result;
 use pixels::wgpu::Color;
 use pixels::{Pixels, PixelsBuilder, SurfaceTexture};
 use rand::Rng;
+use std::f64::consts::PI;
 use std::time::{Duration, Instant};
 use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition};
 use winit::event::{ElementState, Event, MouseButton, MouseScrollDelta, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
-const FPS: u64 = 30;
+const FPS: u64 = 60;
+
+const GRAVITATION: f64 = 0.1;
 
 struct Star {
     x: f64,
     y: f64,
     vx: f64,
     vy: f64,
-    ax: f64,
-    ay: f64,
     m: f64,
 }
 
@@ -32,37 +33,49 @@ impl World {
         let mut rng = rand::thread_rng();
         let mut stars = Vec::new();
 
-        for _ in 0..600 {
+        for _ in 0..1400 {
+            let r1 = rng.gen_range(0.0..10000.0);
+            let t1 = rng.gen_range(0.0..2.0 * PI);
+            let r2 = rng.gen_range(-0.0..10.0);
+            let t2 = rng.gen_range(0.0..2.0 * PI);
             stars.push(Star {
-                x: rng.gen_range(-1000.0..1000.0),
-                y: rng.gen_range(-1000.0..1000.0),
-                vx: rng.gen_range(-10.0..10.0),
-                vy: rng.gen_range(-10.0..10.0),
-                ax: 0.0,
-                ay: 0.0,
-                m: rng.gen_range(0.0..10000.0),
+                x: r1 * t1.cos(),
+                y: r1 * t1.sin(),
+                vx: r2 * t2.cos(),
+                vy: r2 * t2.sin(),
+                m: rng.gen_range(0.0..1000.0),
             });
         }
+
         Self {
             stars,
             camera_x: 0.0,
             camera_y: 0.0,
-            camera_zoom: 1.0,
+            camera_zoom: 0.2,
         }
     }
 
     fn update(&mut self) {
-        for star in &mut self.stars {
-            star.x += star.vx;
-            star.y += star.vy;
-            star.vx += star.ax;
-            star.vy += star.ay;
+        for i in 0..self.stars.len() {
+            if let (before, [target, after @ ..]) = self.stars.split_at_mut(i) {
+                let (ax, ay) =
+                    before
+                        .iter()
+                        .chain(after.iter())
+                        .fold((0.0, 0.0), |(ax, ay), src| {
+                            let x_diff = src.x - target.x;
+                            let y_diff = src.y - target.y;
+                            let c =
+                                GRAVITATION * src.m / (x_diff.powi(2) + y_diff.powi(2)).powf(1.5);
+                            (ax + c * x_diff, ay + c * y_diff)
+                        });
 
-            if star.x < -1000.0 || 1000.0 < star.x {
-                star.vx *= -1.0;
-            }
-            if star.y < -1000.0 || 1000.0 < star.y {
-                star.vy *= -1.0;
+                target.vx += ax;
+                target.vy += ay;
+                target.x += target.vx;
+                target.y += target.vy;
+            } else {
+                unreachable!();
             }
         }
     }
@@ -108,11 +121,7 @@ fn draw_circle(cx: i32, cy: i32, r: u32, frame: &mut [u8], frame_width: u32, fra
         let end = base + (x_end + cx + 1).max(0).min(frame_width as i32) as usize;
 
         for pixel in frame[4 * start..4 * end].chunks_exact_mut(4) {
-            pixel[0] = pixel[0].wrapping_add(0x5e);
-            pixel[1] = pixel[1].wrapping_add(0x48);
-            pixel[2] = pixel[2].wrapping_add(0xe8);
-            pixel[3] = 0xff;
-            //pixel.copy_from_slice(&[0x5e, 0x48, 0xe8, 0xff]);
+            pixel.copy_from_slice(&[0x5e, 0x48, 0xe8, 0xff]);
         }
     };
 
@@ -302,11 +311,15 @@ fn event_handler<T>(
                 Ok(None)
             }
 
-            WindowEvent::MouseWheel {
-                delta: MouseScrollDelta::LineDelta(.., rows),
-                ..
-            } => {
-                world.camera_zoom(rows as f64);
+            WindowEvent::MouseWheel { delta, .. } => {
+                let mut vertical_delta = 0.0;
+
+                match delta {
+                    MouseScrollDelta::LineDelta(.., rows) => vertical_delta += rows as f64,
+                    MouseScrollDelta::PixelDelta(PhysicalPosition { y, .. }) => vertical_delta += y,
+                }
+
+                world.camera_zoom(vertical_delta as f64);
                 Ok(None)
             }
             _ => Ok(None),
