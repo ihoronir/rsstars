@@ -57,26 +57,22 @@ impl World {
 
     fn update(&mut self) {
         for i in 0..self.stars.len() {
-            if let (before, [target, after @ ..]) = self.stars.split_at_mut(i) {
-                let (ax, ay) =
-                    before
-                        .iter()
-                        .chain(after.iter())
-                        .fold((0.0, 0.0), |(ax, ay), src| {
-                            let x_diff = src.x - target.x;
-                            let y_diff = src.y - target.y;
-                            let c =
-                                GRAVITATION * src.m / (x_diff.powi(2) + y_diff.powi(2)).powf(1.5);
-                            (ax + c * x_diff, ay + c * y_diff)
-                        });
+            let (before, [target, after @ ..]) = self.stars.split_at_mut(i) else {unreachable!()};
 
-                target.vx += ax;
-                target.vy += ay;
-                target.x += target.vx;
-                target.y += target.vy;
-            } else {
-                unreachable!();
-            }
+            let (ax, ay) = before
+                .iter()
+                .chain(after.iter())
+                .fold((0.0, 0.0), |(ax, ay), src| {
+                    let x_diff = src.x - target.x;
+                    let y_diff = src.y - target.y;
+                    let c = GRAVITATION * src.m / (x_diff.powi(2) + y_diff.powi(2)).powf(1.5);
+                    (ax + c * x_diff, ay + c * y_diff)
+                });
+
+            target.vx += ax;
+            target.vy += ay;
+            target.x += target.vx;
+            target.y += target.vy;
         }
     }
 
