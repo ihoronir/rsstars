@@ -113,8 +113,8 @@ fn draw_circle(cx: i32, cy: i32, r: u32, frame: &mut [u8], frame_width: u32, fra
             return;
         };
 
-        let start = base + (x_start + cx).max(0).min(frame_width as i32) as usize;
-        let end = base + (x_end + cx + 1).max(0).min(frame_width as i32) as usize;
+        let start = base + (x_start + cx).clamp(0, frame_width as i32) as usize;
+        let end = base + (x_end + cx + 1).clamp(0, frame_width as i32) as usize;
 
         for pixel in frame[4 * start..4 * end].chunks_exact_mut(4) {
             pixel.copy_from_slice(&[0x5e, 0x48, 0xe8, 0xff]);
