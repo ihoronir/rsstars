@@ -57,7 +57,9 @@ impl World {
 
     fn update(&mut self) {
         for i in 0..self.stars.len() {
-            let (before, [target, after @ ..]) = self.stars.split_at_mut(i) else {unreachable!()};
+            let (before, [target, after @ ..]) = self.stars.split_at_mut(i) else {
+                unreachable!()
+            };
 
             let (ax, ay) = before
                 .iter()
