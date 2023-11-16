@@ -213,7 +213,7 @@ impl Context {
     fn new(window: &Window, fps: u64) -> Self {
         let scale_factor = window.scale_factor();
         Context {
-            delta: Duration::from_nanos(1000_000_000 / fps),
+            delta: Duration::from_nanos(1_000_000_000 / fps),
             scale_factor,
             frame_size: window.inner_size().to_logical(scale_factor),
             waiting: false,
@@ -317,7 +317,7 @@ fn event_handler<T>(
                     MouseScrollDelta::PixelDelta(PhysicalPosition { y, .. }) => vertical_delta += y,
                 }
 
-                world.camera_zoom(vertical_delta as f64);
+                world.camera_zoom(vertical_delta);
                 Ok(None)
             }
             _ => Ok(None),
